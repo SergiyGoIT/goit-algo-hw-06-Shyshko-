@@ -1,10 +1,11 @@
 import networkx as nx
+from collections import deque
+import heapq
 import matplotlib.pyplot as plt
 
-# Створення графа
+# Завдання 1: Створення та аналіз графа
+# Створення графа маршруту автобуса №61
 G = nx.Graph()
-
-# Додавання вершин (зупинки автобуса №61)
 stops = [
     "Löbtau, Tharandter Straße",
     "Cotta, Gottfried-Keller-Straße",
@@ -13,13 +14,11 @@ stops = [
     "Freital, Potschappel"
 ]
 G.add_nodes_from(stops)
-
-# Додавання ребер (послідовні зв’язки між зупинками)
 edges = [
-    ("Löbtau, Tharandter Straße", "Cotta, Gottfried-Keller-Straße"),
-    ("Cotta, Gottfried-Keller-Straße", "Altcotta"),
-    ("Altcotta", "Freital, Deuben"),
-    ("Freital, Deuben", "Freital, Potschappel")
+    ("Löbtau, Tharandter Straße", "Cotta, Gottfried-Keller-Straße", {'weight': 1.5}),
+    ("Cotta, Gottfried-Keller-Straße", "Altcotta", {'weight': 2.0}),
+    ("Altcotta", "Freital, Deuben", {'weight': 3.0}),
+    ("Freital, Deuben", "Freital, Potschappel", {'weight': 1.0})
 ]
 G.add_edges_from(edges)
 
@@ -27,42 +26,34 @@ G.add_edges_from(edges)
 pos = nx.spring_layout(G)
 plt.figure(figsize=(10, 6))
 nx.draw(G, pos, with_labels=True, node_color='lightblue', node_size=500, font_size=8, font_weight='bold')
+nx.draw_networkx_edge_labels(G, pos, edge_labels={(u, v): d['weight'] for u, v, d in G.edges(data=True)})
 plt.title("Маршрут автобуса №61 у Дрездені")
-plt.show()
+plt.savefig("bus61_graph.png")
+plt.close()
 
 # Аналіз характеристик
+print("Завдання 1: Аналіз графа")
 print("Кількість вершин:", G.number_of_nodes())
 print("Кількість ребер:", G.number_of_edges())
 print("Ступінь вершин:", dict(G.degree()))
 
-# task2
+# Завдання 2: Власна реалізація BFS
+def bfs_path(graph, start, goal):
+    queue = deque([(start, [start])])
+    visited = {start}
+    
+    while queue:
+        (vertex, path) = queue.popleft()
+        for neighbor in graph.neighbors(vertex):
+            if neighbor not in visited:
+                visited.add(neighbor)
+                new_path = path + [neighbor]
+                if neighbor == goal:
+                    return new_path
+                queue.append((neighbor, new_path))
+    return None
 
-stops = [
-    "Löbtau, Tharandter Straße",
-    "Cotta, Gottfried-Keller-Straße",
-    "Altcotta",
-    "Freital, Deuben",
-    "Freital, Potschappel"
-]
-G.add_nodes_from(stops)
-edges = [
-    ("Löbtau, Tharandter Straße", "Cotta, Gottfried-Keller-Straße"),
-    ("Cotta, Gottfried-Keller-Straße", "Altcotta"),
-    ("Altcotta", "Freital, Deuben"),
-    ("Freital, Deuben", "Freital, Potschappel")
-]
-G.add_edges_from(edges)
-
-# Define source and target stops
-source = "Löbtau, Tharandter Straße"
-target = "Freital, Potschappel"
-
-# BFS path (using nx.shortest_path, which defaults to BFS for unweighted graphs)
-bfs_path = nx.shortest_path(G, source=source, target=target)
-print("BFS path:", bfs_path)
-print("BFS path length (edges):", len(bfs_path) - 1)
-
-# Custom DFS pathfinding function
+# Завдання 2: Власна реалізація DFS
 def dfs_path(graph, start, goal, path=None, visited=None):
     if path is None:
         path = [start]
@@ -80,44 +71,59 @@ def dfs_path(graph, start, goal, path=None, visited=None):
                 return new_path
     return None
 
-# DFS path
-dfs_path = dfs_path(G, source, target)
-print("DFS path:", dfs_path)
-print("DFS path length (edges):", len(dfs_path) - 1)
+# Завдання 3: Власна реалізація алгоритму Дейкстри
+def dijkstra_path(graph, start, goal):
+    distances = {node: float('infinity') for node in graph.nodes()}
+    distances[start] = 0
+    previous = {node: None for node in graph.nodes()}
+    pq = [(0, start)]
+    
+    while pq:
+        current_distance, current_vertex = heapq.heappop(pq)
+        
+        if current_vertex == goal:
+            path = []
+            while current_vertex is not None:
+                path.append(current_vertex)
+                current_vertex = previous[current_vertex]
+            return path[::-1], current_distance
+        
+        if current_distance > distances[current_vertex]:
+            continue
+            
+        for neighbor in graph.neighbors(current_vertex):
+            weight = graph[current_vertex][neighbor].get('weight', 1)
+            distance = current_distance + weight
+            
+            if distance < distances[neighbor]:
+                distances[neighbor] = distance
+                previous[neighbor] = current_vertex
+                heapq.heappush(pq, (distance, neighbor))
+    
+    return None, float('infinity')
 
-# Comparison
-print("\nComparison:")
-if dfs_path == bfs_path:
-    print("DFS and BFS paths are identical because the graph is linear.")
-else:
-    print("DFS and BFS paths differ. DFS may explore deeper paths, while BFS guarantees the shortest path.")
-
-# task3
-
-# Створення графа з вагами
-G_weighted = nx.Graph()
-weighted_edges = [
-    ("Löbtau, Tharandter Straße", "Cotta, Gottfried-Keller-Straße", 1.5),
-    ("Cotta, Gottfried-Keller-Straße", "Altcotta", 2.0),
-    ("Altcotta", "Freital, Deuben", 3.0),
-    ("Freital, Deuben", "Freital, Potschappel", 1.0)
-]
-G_weighted.add_weighted_edges_from(weighted_edges)
-
-# Алгоритм Дейкстри для однієї пари
+# Виконання завдання 2
 source = "Löbtau, Tharandter Straße"
 target = "Freital, Potschappel"
-dijkstra_path = nx.dijkstra_path(G_weighted, source, target, weight='weight')
-dijkstra_length = nx.dijkstra_path_length(G_weighted, source, target, weight='weight')
-print("Шлях за Дейкстрою:", dijkstra_path)
-print("Довжина шляху (км):", dijkstra_length)
 
-# Шляхи між усіма парами вершин
-all_paths = dict(nx.all_pairs_dijkstra_path(G_weighted, weight='weight'))
-all_lengths = dict(nx.all_pairs_dijkstra_path_length(G_weighted, weight='weight'))
-print("\nШляхи між усіма вершинами:")
-for node, paths in all_paths.items():
-    print(f"Від {node}: {paths}")
-print("\nДовжини шляхів (км):")
-for node, lengths in all_lengths.items():
-    print(f"Від {node}: {lengths}")
+print("\nЗавдання 2: Порівняння DFS і BFS")
+bfs_path_result = bfs_path(G, source, target)
+print("BFS шлях:", bfs_path_result)
+print("Довжина BFS шляху (ребер):", len(bfs_path_result) - 1)
+
+dfs_path_result = dfs_path(G, source, target)
+print("DFS шлях:", dfs_path_result)
+print("Довжина DFS шляху (ребер):", len(dfs_path_result) - 1)
+
+# Порівняння
+print("\nПорівняння:")
+if dfs_path_result == bfs_path_result:
+    print("Шляхи DFS і BFS однакові, оскільки граф є лінійним.")
+else:
+    print("Шляхи DFS і BFS відрізняються. DFS може досліджувати глибші гілки, тоді як BFS гарантує найкоротший шлях.")
+
+# Виконання завдання 3
+print("\nЗавдання 3: Алгоритм Дейкстри")
+dijkstra_path_result, dijkstra_length = dijkstra_path(G, source, target)
+print("Шлях за Дейкстрою:", dijkstra_path_result)
+print("Довжина шляху (км):", dijkstra_length)
